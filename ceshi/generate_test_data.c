@@ -245,11 +245,33 @@ void generate_boundary_data(const char* output_dir) {
 }
 
 /**
- * @brief 生成SM3标准测试向量描述文件
+ * @brief 生成SM3标准测试向量描述文件和数据
  */
 void generate_test_vectors_file(const char* output_dir) {
-    printf("\n生成测试向量描述文件...\n");
+    printf("\n生成SM3标准测试向量...\n");
     
+    // 生成测试向量1的二进制数据："abc"
+    uint8_t test_vector_1[BLOCK_SIZE];
+    memset(test_vector_1, 0, BLOCK_SIZE);
+    memcpy(test_vector_1, "abc", 3);
+    
+    char filename1[256];
+    snprintf(filename1, sizeof(filename1), "%s/test_vector_abc.bin", output_dir);
+    write_binary_file(filename1, test_vector_1, BLOCK_SIZE);
+    printf("✓ 已生成: %s\n", filename1);
+    
+    // 生成测试向量2的二进制数据："abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd"
+    uint8_t test_vector_2[BLOCK_SIZE];
+    memset(test_vector_2, 0, BLOCK_SIZE);
+    const char* pattern = "abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd";
+    memcpy(test_vector_2, pattern, strlen(pattern));
+    
+    char filename2[256];
+    snprintf(filename2, sizeof(filename2), "%s/test_vector_abcd64.bin", output_dir);
+    write_binary_file(filename2, test_vector_2, BLOCK_SIZE);
+    printf("✓ 已生成: %s\n", filename2);
+    
+    // 生成文本描述文件
     char filename[256];
     snprintf(filename, sizeof(filename), "%s/test_vectors.txt", output_dir);
     
@@ -267,19 +289,39 @@ void generate_test_vectors_file(const char* output_dir) {
     fprintf(fp, "【SM3标准测试向量】(GB/T 32905-2016)\n\n");
     
     fprintf(fp, "测试向量1:\n");
-    fprintf(fp, "  输入 (ASCII): \"abc\"\n");
+    fprintf(fp, "  文件: test_vector_abc.bin\n");
+    fprintf(fp, "  输入 (ASCII): \"abc\" (填充到4KB，其余为0)\n");
+    fprintf(fp, "  输入长度: 3字节\n");
     fprintf(fp, "  输入 (HEX): 616263\n");
-    fprintf(fp, "  标准SM3输出:\n");
-    fprintf(fp, "    66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0\n\n");
+    fprintf(fp, "  标准SM3输出 (对3字节\"abc\"):\n");
+    fprintf(fp, "    66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0\n");
+    fprintf(fp, "  说明: 这是SM3国标标准测试向量，对原始3字节\"abc\"的哈希值\n\n");
     
     fprintf(fp, "测试向量2:\n");
+    fprintf(fp, "  文件: test_vector_abcd64.bin\n");
     fprintf(fp, "  输入 (ASCII): \"abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\"\n");
-    fprintf(fp, "  标准SM3输出:\n");
-    fprintf(fp, "    debe9ff92275b8a138604889c18e5a4d6fdb70e5387e5765293dcba39c0c5732\n\n");
+    fprintf(fp, "  输入长度: 64字节\n");
+    fprintf(fp, "  标准SM3输出 (对64字节):\n");
+    fprintf(fp, "    debe9ff92275b8a138604889c18e5a4d6fdb70e5387e5765293dcba39c0c5732\n");
+    fprintf(fp, "  说明: 这是SM3国标标准测试向量，对64字节重复\"abcd\"的哈希值\n\n");
+    
+    fprintf(fp, "测试向量3 (扩展测试):\n");
+    fprintf(fp, "  文件: test_data_zeros.bin\n");
+    fprintf(fp, "  输入: 全0数据 (4KB)\n");
+    fprintf(fp, "  用途: 验证4KB全0块的XOR折叠和SM3计算\n\n");
+    
+    fprintf(fp, "测试向量4 (扩展测试):\n");
+    fprintf(fp, "  文件: test_data_ones.bin\n");
+    fprintf(fp, "  输入: 全1数据 (4KB)\n");
+    fprintf(fp, "  用途: 验证4KB全1块的XOR折叠和SM3计算\n\n");
     
     fprintf(fp, "===============================================================================\n\n");
     
     fprintf(fp, "【测试数据文件列表】\n\n");
+    fprintf(fp, "SM3标准测试向量:\n");
+    fprintf(fp, "  - test_vector_abc.bin       : SM3标准测试向量\"abc\" (4KB, 前3字节为abc)\n");
+    fprintf(fp, "  - test_vector_abcd64.bin    : SM3标准测试向量\"abcd\"x16 (4KB, 前64字节)\n\n");
+    
     fprintf(fp, "基础数据:\n");
     fprintf(fp, "  - test_data_zeros.bin       : 全0数据 (4KB)\n");
     fprintf(fp, "  - test_data_ones.bin        : 全1数据 (4KB)\n");
@@ -294,6 +336,9 @@ void generate_test_vectors_file(const char* output_dir) {
     fprintf(fp, "批处理数据:\n");
     fprintf(fp, "  - test_data_batch.bin       : 批处理测试数据 (16个4KB块 = 64KB)\n\n");
     
+    fprintf(fp, "多线程数据:\n");
+    fprintf(fp, "  - test_data_multithread.bin : 多线程测试数据 (1000个4KB块 = 4MB)\n\n");
+    
     fprintf(fp, "雪崩测试数据:\n");
     fprintf(fp, "  - test_data_avalanche.bin   : 雪崩测试数据对 (1000对, 每对8KB)\n");
     fprintf(fp, "                                每对中两个块只有1比特不同\n\n");
@@ -301,29 +346,38 @@ void generate_test_vectors_file(const char* output_dir) {
     fprintf(fp, "===============================================================================\n\n");
     
     fprintf(fp, "【使用说明】\n\n");
-    fprintf(fp, "1. 正确性测试:\n");
+    fprintf(fp, "1. SM3标准测试向量验证:\n");
+    fprintf(fp, "   使用 test_vector_abc.bin, test_vector_abcd64.bin\n");
+    fprintf(fp, "   验证SM3算法实现符合国标 GB/T 32905-2016\n");
+    fprintf(fp, "   注意：对于3字节\"abc\"，需直接调用sm3_compress_hw进行验证\n\n");
+    
+    fprintf(fp, "2. 正确性测试:\n");
     fprintf(fp, "   使用 test_data_zeros.bin, test_data_ones.bin 等基础数据\n");
     fprintf(fp, "   验证算法的确定性和基本功能\n\n");
     
-    fprintf(fp, "2. 雪崩效应测试:\n");
+    fprintf(fp, "3. 雪崩效应测试:\n");
     fprintf(fp, "   使用 test_data_avalanche.bin\n");
     fprintf(fp, "   每对数据（8KB）包含两个相邻的4KB块\n");
     fprintf(fp, "   第一个块: [offset + 0, offset + 4095]\n");
     fprintf(fp, "   第二个块: [offset + 4096, offset + 8191]\n");
     fprintf(fp, "   验证单比特变化导致约50%%输出位翻转\n\n");
     
-    fprintf(fp, "3. 批处理测试:\n");
+    fprintf(fp, "4. 批处理测试:\n");
     fprintf(fp, "   使用 test_data_batch.bin\n");
     fprintf(fp, "   包含16个4KB块，可用于批处理功能验证\n\n");
     
-    fprintf(fp, "4. 性能测试:\n");
+    fprintf(fp, "5. 多线程测试:\n");
+    fprintf(fp, "   使用 test_data_multithread.bin\n");
+    fprintf(fp, "   包含1000个4KB块，可用于并行处理测试\n\n");
+    
+    fprintf(fp, "6. 性能测试:\n");
     fprintf(fp, "   使用 test_data_random_XXX.bin\n");
     fprintf(fp, "   多个随机数据文件可用于吞吐量测试\n\n");
     
     fprintf(fp, "===============================================================================\n");
     
     fclose(fp);
-    printf("✓ 已生成: %s\n", filename);
+    printf("✓ 已生成: test_vectors.txt\n");
 }
 
 /**
