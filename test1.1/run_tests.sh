@@ -78,25 +78,36 @@ COMPILE_FLAGS="-march=armv8.2-a+crypto -O3 -funroll-loops -ftree-vectorize -finl
 # 备选编译选项（如果不支持某些特性）
 FALLBACK_FLAGS="-march=armv8-a+crypto -O3 -funroll-loops -ftree-vectorize -finline-functions -pthread"
 
+echo "创建库文件（去除main函数）..."
+# 创建不含main函数的库文件
+MAIN_LINE=$(grep -n "^int main()" aes_sm3_integrity.c | tail -1 | cut -d: -f1)
+if [ -z "$MAIN_LINE" ]; then
+    MAIN_LINE=3413
+fi
+MAIN_LINE=$((MAIN_LINE - 1))
+head -n $MAIN_LINE aes_sm3_integrity.c > aes_sm3_integrity_lib.c
+echo -e "${GREEN}✓${NC} 库文件创建成功"
+echo ""
+
 echo "编译测试程序..."
 echo "编译选项: $COMPILE_FLAGS"
 
 # 尝试编译
-if gcc $COMPILE_FLAGS -o test_aes_sm3 aes_sm3_integrity.c test_aes_sm3_integrity.c -lm 2>compile_error.log; then
+if gcc $COMPILE_FLAGS -o test_aes_sm3 aes_sm3_integrity_lib.c test_aes_sm3_integrity.c -lm 2>compile_error.log; then
     echo -e "${GREEN}✓${NC} 编译成功！"
-    rm -f compile_error.log
+    rm -f compile_error.log aes_sm3_integrity_lib.c
 else
     echo -e "${YELLOW}⚠${NC} 使用默认编译选项失败，尝试备选方案..."
     
-    if gcc $FALLBACK_FLAGS -o test_aes_sm3 aes_sm3_integrity.c test_aes_sm3_integrity.c -lm 2>compile_error.log; then
+    if gcc $FALLBACK_FLAGS -o test_aes_sm3 aes_sm3_integrity_lib.c test_aes_sm3_integrity.c -lm 2>compile_error.log; then
         echo -e "${GREEN}✓${NC} 使用备选编译选项成功！"
-        rm -f compile_error.log
+        rm -f compile_error.log aes_sm3_integrity_lib.c
     else
         echo -e "${RED}✗${NC} 编译失败！"
         echo ""
         echo "错误信息:"
         cat compile_error.log
-        rm -f compile_error.log
+        rm -f compile_error.log aes_sm3_integrity_lib.c
         exit 1
     fi
 fi

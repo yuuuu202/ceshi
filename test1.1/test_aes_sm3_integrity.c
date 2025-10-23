@@ -58,8 +58,17 @@ extern void aes_sm3_integrity_256bit_mega(const uint8_t* input, uint8_t* output)
 extern void aes_sm3_integrity_256bit_super(const uint8_t* input, uint8_t* output);
 extern void aes_sm3_integrity_256bit_hyper(const uint8_t* input, uint8_t* output);
 extern void aes_sm3_integrity_batch(const uint8_t** inputs, uint8_t** outputs, int batch_size);
+extern void aes_sm3_parallel(const uint8_t* input, uint8_t* output, int block_count, int num_threads, int output_size);
 extern void sha256_4kb(const uint8_t* input, uint8_t* output);
 extern void sm3_4kb(const uint8_t* input, uint8_t* output);
+extern void test_memory_access_optimization(void);
+
+// SM3相关声明（用于测试16）
+static const uint32_t SM3_IV_LOCAL[8] = {
+    0x7380166f, 0x4914b2b9, 0x172442d7, 0xda8a0600,
+    0xa96f30bc, 0x163138aa, 0xe38dee4d, 0xb0fb0e4e
+};
+extern void sm3_compress_hw(uint32_t* state, const uint32_t* block);
 
 // 测试统计结构
 typedef struct {
@@ -865,11 +874,8 @@ void test_sm3_standard_vector() {
     padded_input[63] = 0x18;  // 24 in decimal
     
     // 使用主文件的SM3压缩函数
-    extern const uint32_t SM3_IV[8];
-    extern void sm3_compress_hw(uint32_t* state, const uint32_t* block);
-    
     uint32_t state[8];
-    memcpy(state, SM3_IV, sizeof(uint32_t) * 8);
+    memcpy(state, SM3_IV_LOCAL, sizeof(uint32_t) * 8);
     
     uint32_t block[16];
     for (int i = 0; i < 16; i++) {
